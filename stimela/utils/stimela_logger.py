@@ -1,5 +1,6 @@
 ### Stimela logging classes
 import time
+import datetime
 
 class Container(object):
 
@@ -16,14 +17,21 @@ class Container(object):
 
     def add(self, cont):
         
-        name = cont["name"]
-        cid = cont["id"]
-        uptime = cont["uptime"]
-        pid = cont["pid"]
-        status = cont["status"]
+        name = str(cont["Name"]).split("/")[1]
+        cid = cont["Id"]
+        pid = cont["State"]["Pid"]
+        status = cont["State"]["Status"]
+
+        start = cont["State"]["StartedAt"].split(".")[0]
+        end = cont["State"]["FinishedAt"].split(".")[0]
+
+        st = datetime.datetime.strptime(start, "%Y-%m-%dT%H:%M:%S")
+        en = datetime.datetime.strptime(end, "%Y-%m-%dT%H:%M:%S")
+
+
+        uptime = str(en-st)
 
         line = "%(name)s %(cid)s %(uptime)s %(pid)s %(status)s\n"%locals()
-
         self.lines.append(line)
 
 
