@@ -16,12 +16,18 @@ manager = Manager()
 
 CPUS = 1
 
-def logger(level=0, logfile=None):
+def logger(level, logfile):
 
-    if logfile:
-        logging.basicConfig(filename=logfile)
-    else:
-        logging.basicConfig()
+    logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
+    rootLogger = logging.getLogger()
+    
+    fileHandler = logging.FileHandler(logfile)
+    fileHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(fileHandler)
+    
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(consoleHandler)
 
     LOGL = {"0": "INFO",
             "1": "DEBUG",
@@ -39,7 +45,7 @@ def assign(key, value):
     frame.f_globals[key] = value
 
 
-def xrun(command, options, log=None, _log_container_as_started=False, logfile=None):
+def xrun(command, options, log=None, _log_container_as_started=False, logfile=None, message=None):
     """
         Run something on command line.
 
@@ -49,10 +55,13 @@ def xrun(command, options, log=None, _log_container_as_started=False, logfile=No
     cmd = " ".join([command]+ map(str, options) )
 
     if log:
-        log.info("Running: %s"%cmd)
+        if message:
+            log.info(message)
+        else:
+            log.info("Running: %s"%cmd)
     else:
         print('running: %s'%cmd)
-
+    
     process = subprocess.Popen(cmd,
                   stderr=subprocess.PIPE if not isinstance(sys.stderr,file) else sys.stderr,
                   stdout=subprocess.PIPE if not isinstance(sys.stdout,file) else sys.stdout,

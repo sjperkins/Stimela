@@ -6,13 +6,14 @@ from  argparse import ArgumentParser
 import textwrap as _textwrap
 import tempfile
 import signal
+from docker import Client
+
+DOCKER_SOCKET = "unix://var/run/docker.sock"
 
 import inspect
 import stimela
 from stimela import utils, cargo
-from recipe import Recipe as Pipeline
 from recipe import Recipe
-import stimela.stimela_docker as docker
 
 from stimela.utils import stimela_logger
 
@@ -57,13 +58,20 @@ def build():
     # clear old cabs
     img = stimela_logger.Image(LOG_CABS)
     img.clear()
+
+    with Client(base_url=DOCKER_SOCKET) as docker:
     
-    for image in CAB:
-        dockerfile = "{:s}/{:s}".format(cargo.CAB_PATH, image)
-        image = "{:s}_cab/{:s}".format(USER, image)
-        docker.build(image,
-                       dockerfile)
-        img.add(dict(name=image))
+        for image in CAB:
+            path = "{:s}/{:s}".format(cargo.CAB_PATH, image)
+            image = "{:s}_cab/{:s}".format(USER, image)
+            
+            print "Building image", image
+            docker.build(dockerfile="Dockerfile", 
+                         path=path,
+                         rm=False,
+                         tag=image)
+
+            img.add(dict(name=image))
 
     img.write()
 
@@ -180,13 +188,13 @@ def pull():
     args = parser.parse_args()
 
     if args.image:
-        for image in args.image:
-            img = stimela_logger.Image(LOG_IMAGES)
+        with Client(DOCKER_SOCKET) as docker:
+            for image in args.image:
+                img = stimela_logger.Image(LOG_IMAGES)
 
-            if not img.find(image):
-                docker.pull(image)
-                img.add(dict(name=image, tag=tagargs.tag))
-
+                if not img.find(image):
+                    docker.pull(image, stream=True)
+                    img.add(dict(name=image, tag=args.tag))
     else:
 
         base = []
@@ -196,12 +204,15 @@ def pull():
 
         base = set(base)
 
-        for image in base:
-            img = stimela_logger.Image(LOG_IMAGES)
+        
+        with Client(DOCKER_SOCKET) as docker:
 
-            if not img.find(image) and image!="radioastro/ddfacet":
-                docker.pull(image)
-                img.add(dict(name=image, tag=args.tag))
+            for image in base:
+                img = stimela_logger.Image(LOG_IMAGES)
+                
+                if not img.find(image) and image!="radioastro/ddfacet":
+                    docker.pull(image, stream=True)
+                    img.add(dict(name=image, tag=args.tag))
 
 def images():
     for i, arg in enumerate(sys.argv):
